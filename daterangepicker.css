@@ -164,6 +164,12 @@
   cursor: pointer;
 }
 
+.daterangepicker td.out-range {
+  background: #ff7575;
+  border-radius: 0;
+  cursor: not-allowed;
+}
+
 .daterangepicker td.off, .daterangepicker td.off.in-range, .daterangepicker td.off.start-date, .daterangepicker td.off.end-date {
   color: #999;
   background: #fff;
