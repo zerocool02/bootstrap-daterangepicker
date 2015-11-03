@@ -1,40 +1,51 @@
 /**
-* @version: 2.1.13
+* @version: 2.0.14
 * @author: Dan Grossman http://www.dangrossman.info/
 * @copyright: Copyright (c) 2012-2015 Dan Grossman. All rights reserved.
 * @license: Licensed under the MIT license. See http://www.opensource.org/licenses/mit-license.php
 * @website: https://www.improvely.com/
 */
 
-(function(root, factory) {
+/*
+Modified by: Mark Ryan Cruz 
+Modified date: Oct. 22, 2015
+added feature:
+    disable dates
+    disable weekdays
+    prevent selecting disabled date within range
+    prevent typing in disabled dates
+*/
 
-  if (typeof define === 'function' && define.amd) {
-    define(['moment', 'jquery', 'exports'], function(momentjs, $, exports) {
-      root.daterangepicker = factory(root, exports, momentjs, $);
-    });
 
-  } else if (typeof exports !== 'undefined') {
-      var momentjs = require('moment');
-      var jQuery = (typeof window != 'undefined') ? window.jQuery : undefined;  //isomorphic issue
-      if (!jQuery) {
-          try {
-              jQuery = require('jquery');
-              if (!jQuery.fn) jQuery.fn = {}; //isomorphic issue
-          } catch (err) {
-              if (!jQuery) throw new Error('jQuery dependency not found');
-          }
-      }
+(function (root, factory) {
 
-    factory(root, exports, momentjs, jQuery);
+    if (typeof define === 'function' && define.amd) {
+        define(['moment', 'jquery', 'exports'], function (momentjs, $, exports) {
+            root.daterangepicker = factory(root, exports, momentjs, $);
+        });
 
-  // Finally, as a browser global.
-  } else {
-    root.daterangepicker = factory(root, {}, root.moment || moment, (root.jQuery || root.Zepto || root.ender || root.$));
-  }
+    } else if (typeof exports !== 'undefined') {
+        var momentjs = require('moment');
+        var jQuery = (typeof window != 'undefined') ? window.jQuery : undefined;  //isomorphic issue
+        if (!jQuery) {
+            try {
+                jQuery = require('jquery');
+                if (!jQuery.fn) jQuery.fn = {}; //isomorphic issue
+            } catch (err) {
+                if (!jQuery) throw new Error('jQuery dependency not found');
+            }
+        }
 
-}(this || {}, function(root, daterangepicker, moment, $) { // 'this' doesn't exist on a server
+        factory(root, exports, momentjs, jQuery);
 
-    var DateRangePicker = function(element, options, cb) {
+        // Finally, as a browser global.
+    } else {
+        root.daterangepicker = factory(root, {}, root.moment || moment, (root.jQuery || root.Zepto || root.ender || root.$));
+    }
+
+} (this || {}, function (root, daterangepicker, moment, $) { // 'this' doesn't exist on a server
+
+    var DateRangePicker = function (element, options, cb) {
 
         //default settings for options
         this.parentEl = 'body';
@@ -55,6 +66,21 @@
         this.linkedCalendars = true;
         this.autoUpdateInput = true;
         this.ranges = {};
+
+        //added for disabling dates
+        this.setDisableDates = false;
+        //this.setDates = ['10/23/2015', '10/24/2015', '10/25/2015', '10/26/2015', '10/27/2015', '11/02/2015', '11/03/2015', '11/04/2015'];
+        //supplied dates will be available
+        this.setDates = [];
+
+        //added for disabling weekdays
+        this.setDisableWeekdays = false;
+        //this.setWeekdays = [0,1,2,3]; 0-6 = Sun - Sat
+        //supplied weekdays will be available
+        this.setWeekdays = [];
+
+        //supplied dates will be disabled
+        this.setDatesDisabled = [];
 
         this.opens = 'right';
         if (this.element.hasClass('pull-right'))
@@ -80,7 +106,7 @@
             firstDay: moment.localeData().firstDayOfWeek()
         };
 
-        this.callback = function() { };
+        this.callback = function () { };
 
         //some state information
         this.isShowing = false;
@@ -147,22 +173,22 @@
                 this.locale.daysOfWeek = options.locale.daysOfWeek.slice();
 
             if (typeof options.locale.monthNames === 'object')
-              this.locale.monthNames = options.locale.monthNames.slice();
+                this.locale.monthNames = options.locale.monthNames.slice();
 
             if (typeof options.locale.firstDay === 'number')
-              this.locale.firstDay = options.locale.firstDay;
+                this.locale.firstDay = options.locale.firstDay;
 
             if (typeof options.locale.applyLabel === 'string')
-              this.locale.applyLabel = options.locale.applyLabel;
+                this.locale.applyLabel = options.locale.applyLabel;
 
             if (typeof options.locale.cancelLabel === 'string')
-              this.locale.cancelLabel = options.locale.cancelLabel;
+                this.locale.cancelLabel = options.locale.cancelLabel;
 
             if (typeof options.locale.weekLabel === 'string')
-              this.locale.weekLabel = options.locale.weekLabel;
+                this.locale.weekLabel = options.locale.weekLabel;
 
             if (typeof options.locale.customRangeLabel === 'string')
-              this.locale.customRangeLabel = options.locale.customRangeLabel;
+                this.locale.customRangeLabel = options.locale.customRangeLabel;
 
         }
 
@@ -246,6 +272,34 @@
         if (typeof options.autoApply === 'boolean')
             this.autoApply = options.autoApply;
 
+        //setDisableDates
+        //=================================================
+        if (typeof options.setDisableDates === 'boolean')
+            this.setDisableDates = options.setDisableDates;
+
+        if (this.setDisableDates == true) {
+            if (options.setDates.length != 0)
+                this.setDates = options.setDates;
+        }
+        //=================================================
+
+        //setDisableWeekDays
+        //=================================================
+        if (typeof options.setDisableWeekdays === 'boolean')
+            this.setDisableWeekdays = options.setDisableWeekdays;
+
+        if (this.setDisableWeekdays == true) {
+            if (options.setWeekdays.length != 0)
+                this.setWeekdays = options.setWeekdays;
+        }
+        //=================================================
+
+        //set dates for disabling
+        //=================================================
+        if (typeof options.setDatesDisabled === 'object')
+            this.setDatesDisabled = options.setDatesDisabled
+        //=================================================
+
         if (typeof options.autoUpdateInput === 'boolean')
             this.autoUpdateInput = options.autoUpdateInput;
 
@@ -281,6 +335,102 @@
                     start = moment(val, this.locale.format);
                     end = moment(val, this.locale.format);
                 }
+                //====================== Starts Here =========================
+                if (this.setDisableWeekdays == true) {
+
+                    var startDisabledDate = "";
+                    var currentDate = moment(start),
+                            endDate = moment(end);
+
+                    while (currentDate <= endDate) {
+                        if ($.inArray(moment(currentDate).day(), this.setWeekdays) > -1) {
+                            start = moment(currentDate).format('MM/DD/YYYY');
+                            break;
+                        }
+                        currentDate = moment(currentDate).add(1, 'days');
+                    }
+
+                    var currentDate = moment(start),
+                            endDate = moment(end);
+
+                    while (currentDate <= endDate) {
+                        if ($.inArray(moment(currentDate).day(), this.setWeekdays) == -1) {
+                            startDisabledDate = currentDate;
+                            break;
+                        }
+                        currentDate = moment(currentDate).add(1, 'days');
+                    }
+
+                    if (startDisabledDate != "") {
+                        end = moment(startDisabledDate).subtract(1, 'days');
+                    }
+
+                }
+                //====================== Ends Here ===========================
+
+                //====================== Starts Here =========================
+                if (this.setDisableDates == true) {
+
+                    var startDisabledDate = "";
+                    var currentDate = moment(start),
+                            endDate = moment(end);
+
+                    while (currentDate <= endDate) {
+                        if ($.inArray(moment(currentDate).format('MM/DD/YYYY'), this.setDates) > -1) {
+                            start = moment(currentDate).format('MM/DD/YYYY');
+                            break;
+                        }
+                        currentDate = moment(currentDate).add(1, 'days');
+                    }
+
+                    var currentDate = moment(start),
+                            endDate = moment(end);
+
+                    while (currentDate <= endDate) {
+                        if ($.inArray(moment(currentDate).format('MM/DD/YYYY'), this.setDates) == -1) {
+                            startDisabledDate = currentDate;
+                            break;
+                        }
+                        currentDate = moment(currentDate).add(1, 'days');
+                    }
+
+                    if (startDisabledDate != "") {
+                        end = moment(startDisabledDate).subtract(1, 'days');
+                    }
+                }
+                //====================== Ends Here ===========================
+
+                //====================== Starts Here =========================
+                if (this.setDatesDisabled.length != 0) {
+                    var startDisabledDate = "";
+                    var currentDate = moment(start),
+                            endDate = moment(end);
+
+                    while (currentDate <= endDate) {
+                        if ($.inArray(moment(currentDate).format('MM/DD/YYYY'), this.setDatesDisabled) == -1) {
+                            start = moment(currentDate).format('MM/DD/YYYY');
+                            break;
+                        }
+                        currentDate = moment(currentDate).add(1, 'days');
+                    }
+
+                    var currentDate = moment(start),
+                            endDate = moment(end);
+
+                    while (currentDate <= endDate) {
+                        if ($.inArray(moment(currentDate).format('MM/DD/YYYY'), this.setDatesDisabled) > -1) {
+                            startDisabledDate = currentDate;
+                            break;
+                        }
+                        currentDate = moment(currentDate).add(1, 'days');
+                    }
+
+                    if (startDisabledDate != "") {
+                        end = moment(startDisabledDate).subtract(1, 'days');
+                    }
+                }
+                //====================== Ends Here ===========================
+
                 if (start !== null && end !== null) {
                     this.setStartDate(start);
                     this.setEndDate(end);
@@ -316,13 +466,8 @@
                 // after the maximum, don't display this range option at all.
                 if ((this.minDate && end.isBefore(this.minDate)) || (maxDate && start.isAfter(maxDate)))
                     continue;
-                
-                //Support unicode chars in the range names.
-                var elem = document.createElement('textarea');
-                elem.innerHTML = range;
-                rangeHtml = elem.value;
 
-                this.ranges[rangeHtml] = [start, end];
+                this.ranges[range] = [start, end];
             }
 
             var list = '<ul>';
@@ -402,7 +547,7 @@
             .on('change.daterangepicker', 'select.monthselect', $.proxy(this.monthOrYearChanged, this))
             .on('change.daterangepicker', 'select.hourselect,select.minuteselect,select.secondselect,select.ampmselect', $.proxy(this.timeChanged, this))
             .on('click.daterangepicker', '.daterangepicker_input input', $.proxy(this.showCalendars, this))
-            //.on('keyup.daterangepicker', '.daterangepicker_input input', $.proxy(this.formInputsChanged, this))
+        //.on('keyup.daterangepicker', '.daterangepicker_input input', $.proxy(this.formInputsChanged, this))
             .on('change.daterangepicker', '.daterangepicker_input input', $.proxy(this.formInputsChanged, this));
 
         this.container.find('.ranges')
@@ -441,7 +586,7 @@
 
         constructor: DateRangePicker,
 
-        setStartDate: function(startDate) {
+        setStartDate: function (startDate) {
             if (typeof startDate === 'string')
                 this.startDate = moment(startDate, this.locale.format);
 
@@ -466,7 +611,7 @@
             this.updateMonthsInView();
         },
 
-        setEndDate: function(endDate) {
+        setEndDate: function (endDate) {
             if (typeof endDate === 'string')
                 this.endDate = moment(endDate, this.locale.format);
 
@@ -494,11 +639,11 @@
             this.updateMonthsInView();
         },
 
-        isInvalidDate: function() {
+        isInvalidDate: function () {
             return false;
         },
 
-        updateView: function() {
+        updateView: function () {
             if (this.timePicker) {
                 this.renderTimePicker('left');
                 this.renderTimePicker('right');
@@ -520,7 +665,7 @@
             this.updateFormInputs();
         },
 
-        updateMonthsInView: function() {
+        updateMonthsInView: function () {
             if (this.endDate) {
 
                 //if both dates are visible already, do nothing
@@ -538,7 +683,7 @@
                 } else {
                     this.rightCalendar.month = this.startDate.clone().date(2).add(1, 'month');
                 }
-                
+
             } else {
                 if (this.leftCalendar.month.format('YYYY-MM') != this.startDate.format('YYYY-MM') && this.rightCalendar.month.format('YYYY-MM') != this.startDate.format('YYYY-MM')) {
                     this.leftCalendar.month = this.startDate.clone().date(2);
@@ -547,7 +692,7 @@
             }
         },
 
-        updateCalendars: function() {
+        updateCalendars: function () {
 
             if (this.timePicker) {
                 var hour, minute, second;
@@ -611,7 +756,7 @@
 
         },
 
-        renderCalendar: function(side) {
+        renderCalendar: function (side) {
 
             //
             // Build the matrix of dates that will populate the calendar
@@ -747,7 +892,7 @@
             if (this.showWeekNumbers)
                 html += '<th class="week">' + this.locale.weekLabel + '</th>';
 
-            $.each(this.locale.daysOfWeek, function(index, dayOfWeek) {
+            $.each(this.locale.daysOfWeek, function (index, dayOfWeek) {
                 html += '<th>' + dayOfWeek + '</th>';
             });
 
@@ -774,6 +919,30 @@
                 for (var col = 0; col < 7; col++) {
 
                     var classes = [];
+
+                    //disable set blocked dates
+                    //===========================================================
+                    if (this.setDisableDates == true) {
+                        if ($.inArray(moment(calendar[row][col]).format('MM/DD/YYYY'), this.setDates) == -1)
+                            classes.push('off', 'disabled')
+                    }
+                    //===========================================================
+
+                    //disable set blocked weekdays
+                    //===========================================================
+                    if (this.setDisableWeekdays == true) {
+                        if ($.inArray(col, this.setWeekdays) == -1)
+                            classes.push('off', 'disabled')
+                    }
+                    //===========================================================
+
+                    //disable set of dates
+                    //===========================================================
+                    if (this.setDatesDisabled.length != 0) {
+                        if ($.inArray(moment(calendar[row][col]).format('MM/DD/YYYY'), this.setDatesDisabled) > -1)
+                            classes.push('off', 'disabled')
+                    }
+                    //===========================================================
 
                     //highlight today's date
                     if (calendar[row][col].isSame(new Date(), "day"))
@@ -833,7 +1002,7 @@
 
         },
 
-        renderTimePicker: function(side) {
+        renderTimePicker: function (side) {
 
             var html, selected, minDate, maxDate = this.maxDate;
 
@@ -965,13 +1134,14 @@
 
         },
 
-        updateFormInputs: function() {
+        updateFormInputs: function () {
 
             //ignore mouse movements while an above-calendar text input has focus
             if (this.container.find('input[name=daterangepicker_start]').is(":focus") || this.container.find('input[name=daterangepicker_end]').is(":focus"))
                 return;
 
             this.container.find('input[name=daterangepicker_start]').val(this.startDate.format(this.locale.format));
+
             if (this.endDate)
                 this.container.find('input[name=daterangepicker_end]').val(this.endDate.format(this.locale.format));
 
@@ -983,7 +1153,7 @@
 
         },
 
-        move: function() {
+        move: function () {
             var parentOffset = { top: 0, left: 0 },
                 containerTop;
             var parentRightEdge = $(window).width();
@@ -1041,24 +1211,20 @@
             }
         },
 
-        show: function(e) {
+        show: function (e) {
             if (this.isShowing) return;
 
             // Create a click proxy that is private to this instance of datepicker, for unbinding
-            this._outsideClickProxy = $.proxy(function(e) { this.outsideClick(e); }, this);
-
+            this._outsideClickProxy = $.proxy(function (e) { this.outsideClick(e); }, this);
             // Bind global datepicker mousedown for hiding and
             $(document)
               .on('mousedown.daterangepicker', this._outsideClickProxy)
-              // also support mobile devices
+            // also support mobile devices
               .on('touchend.daterangepicker', this._outsideClickProxy)
-              // also explicitly play nice with Bootstrap dropdowns, which stopPropagation when clicking them
+            // also explicitly play nice with Bootstrap dropdowns, which stopPropagation when clicking them
               .on('click.daterangepicker', '[data-toggle=dropdown]', this._outsideClickProxy)
-              // and also close when focus changes to outside the picker (eg. tabbing between controls)
+            // and also close when focus changes to outside the picker (eg. tabbing between controls)
               .on('focusin.daterangepicker', this._outsideClickProxy);
-
-            // Reposition the picker if the window is resized while it's open
-            $(window).on('resize.daterangepicker', $.proxy(function(e) { this.move(e); }, this));
 
             this.oldStartDate = this.startDate.clone();
             this.oldEndDate = this.endDate.clone();
@@ -1070,7 +1236,7 @@
             this.isShowing = true;
         },
 
-        hide: function(e) {
+        hide: function (e) {
             if (!this.isShowing) return;
 
             //incomplete date selection, revert to last values
@@ -1087,13 +1253,12 @@
             this.updateElement();
 
             $(document).off('.daterangepicker');
-            $(window).off('.daterangepicker');
             this.container.hide();
             this.element.trigger('hide.daterangepicker', this);
             this.isShowing = false;
         },
 
-        toggle: function(e) {
+        toggle: function (e) {
             if (this.isShowing) {
                 this.hide();
             } else {
@@ -1101,12 +1266,12 @@
             }
         },
 
-        outsideClick: function(e) {
+        outsideClick: function (e) {
             var target = $(e.target);
             // if the page is clicked anywhere except within the daterangerpicker/button
             // itself then call this.hide()
             if (
-                // ie modal dialog fix
+            // ie modal dialog fix
                 e.type == "focusin" ||
                 target.closest(this.element).length ||
                 target.closest(this.container).length ||
@@ -1115,18 +1280,18 @@
             this.hide();
         },
 
-        showCalendars: function() {
+        showCalendars: function () {
             this.container.addClass('show-calendar');
             this.move();
             this.element.trigger('showCalendar.daterangepicker', this);
         },
 
-        hideCalendars: function() {
+        hideCalendars: function () {
             this.container.removeClass('show-calendar');
             this.element.trigger('hideCalendar.daterangepicker', this);
         },
 
-        hoverRange: function(e) {
+        hoverRange: function (e) {
 
             //ignore mouse movements while an above-calendar text input has focus
             if (this.container.find('input[name=daterangepicker_start]').is(":focus") || this.container.find('input[name=daterangepicker_end]').is(":focus"))
@@ -1140,10 +1305,10 @@
                 this.container.find('input[name=daterangepicker_start]').val(dates[0].format(this.locale.format));
                 this.container.find('input[name=daterangepicker_end]').val(dates[1].format(this.locale.format));
             }
-            
+
         },
 
-        clickRange: function(e) {
+        clickRange: function (e) {
             var label = e.target.innerHTML;
             this.chosenLabel = label;
             if (label == this.locale.customRangeLabel) {
@@ -1163,7 +1328,7 @@
             }
         },
 
-        clickPrev: function(e) {
+        clickPrev: function (e) {
             var cal = $(e.target).parents('.calendar');
             if (cal.hasClass('left')) {
                 this.leftCalendar.month.subtract(1, 'month');
@@ -1175,7 +1340,7 @@
             this.updateCalendars();
         },
 
-        clickNext: function(e) {
+        clickNext: function (e) {
             var cal = $(e.target).parents('.calendar');
             if (cal.hasClass('left')) {
                 this.leftCalendar.month.add(1, 'month');
@@ -1187,7 +1352,7 @@
             this.updateCalendars();
         },
 
-        hoverDate: function(e) {
+        hoverDate: function (e) {
 
             //ignore mouse movements while an above-calendar text input has focus
             if (this.container.find('input[name=daterangepicker_start]').is(":focus") || this.container.find('input[name=daterangepicker_end]').is(":focus"))
@@ -1209,12 +1374,30 @@
                 this.container.find('input[name=daterangepicker_end]').val(date.format(this.locale.format));
             }
 
+            var fromDate = this.container.find('input[name=daterangepicker_start]').val();
+            var toDate = this.container.find('input[name=daterangepicker_end]').val();
+
             //highlight the dates between the start date and the date being hovered as a potential end date
             var leftCalendar = this.leftCalendar;
             var rightCalendar = this.rightCalendar;
             var startDate = this.startDate;
+
+            //=================================================
+            var setDisableDates = this.setDisableDates;
+            var setDates = this.setDates;
+            //=================================================
+
+            //=================================================
+            var setDisableWeekdays = this.setDisableWeekdays;
+            var setWeekdays = this.setWeekdays;
+            //=================================================
+
+            //=================================================
+            var setDatesDisabled = this.setDatesDisabled;
+            //=================================================
+
             if (!this.endDate) {
-                this.container.find('.calendar td').each(function(index, el) {
+                this.container.find('.calendar td').each(function (index, el) {
 
                     //skip week numbers, only look at dates
                     if ($(el).hasClass('week')) return;
@@ -1225,18 +1408,164 @@
                     var cal = $(el).parents('.calendar');
                     var dt = cal.hasClass('left') ? leftCalendar.calendar[row][col] : rightCalendar.calendar[row][col];
 
-                    if (dt.isAfter(startDate) && dt.isBefore(date)) {
-                        $(el).addClass('in-range');
-                    } else {
-                        $(el).removeClass('in-range');
+                    if (setDisableDates == false && setDisableWeekdays == false) {
+                        if (dt.isAfter(startDate) && dt.isBefore(date)) {
+                            $(el).addClass('in-range');
+                        } else {
+                            $(el).removeClass('in-range');
+                        }
                     }
+                    //====================== Starts Here =========================
+                    if (setDisableDates == true) {
+                        var rangeDate = moment.range(fromDate, toDate);
+                        var startDisabledDate = "";
+                        var currentDate = moment(fromDate),
+                            endDate = moment(toDate);
+                        while (currentDate <= endDate) {
+                            if ($.inArray(moment(currentDate).format('MM/DD/YYYY'), setDates) == -1) {
+                                startDisabledDate = currentDate;
+                                break;
+                            }
+                            currentDate = moment(currentDate).add(1, 'days');
+                        }
+
+                        if (startDisabledDate != "") {
+                            if (rangeDate.contains(startDisabledDate)) {
+                                if (dt.isSame(startDisabledDate) || dt.isAfter(startDisabledDate)) {
+                                    if ($(el).hasClass('available')) {
+                                        $(el).addClass('out-range');
+                                        $(el).removeClass('in-range');
+                                    } else {
+                                        $(el).removeClass('out-range');
+                                    }
+                                } else if (dt.isBefore(startDisabledDate)) {
+                                    $(el).removeClass('out-range');
+                                }
+                            } else {
+                                $(el).removeClass('out-range');
+                                if (dt.isAfter(startDate) && dt.isBefore(date)) {
+                                    $(el).addClass('in-range');
+                                } else {
+                                    $(el).removeClass('in-range');
+                                }
+                            }
+                        } else {
+                            if (dt.isAfter(startDate) && dt.isBefore(date)) {
+                                $(el).addClass('in-range');
+                            } else {
+                                $(el).removeClass('in-range');
+                            }
+                        }
+                    }
+
+                    //====================== Ends Here =========================
+
+                    //====================== Starts Here =========================
+                    if (setDisableWeekdays == true) {
+                        //console.log(setDisableWeekdays);
+                        var rangeDate = moment.range(fromDate, toDate);
+                        var startDisabledDate = "";
+                        var currentDate = moment(fromDate),
+                            endDate = moment(toDate);
+                        while (currentDate <= endDate) {
+                            if ($.inArray(moment(currentDate).day(), setWeekdays) == -1) {
+                                startDisabledDate = currentDate;
+                                break;
+                            }
+                            currentDate = moment(currentDate).add(1, 'days');
+                        }
+
+                        if (startDisabledDate != "") {
+                            if (rangeDate.contains(startDisabledDate)) {
+                                if (dt.isSame(startDisabledDate) || dt.isAfter(startDisabledDate)) {
+                                    if ($(el).hasClass('available')) {
+                                        $(el).addClass('out-range');
+                                        $(el).removeClass('in-range');
+                                    } else {
+                                        $(el).removeClass('out-range');
+                                    }
+                                } else if (dt.isBefore(startDisabledDate)) {
+                                    $(el).removeClass('out-range');
+                                }
+                            } else {
+                                $(el).removeClass('out-range');
+                                if (dt.isAfter(startDate) && dt.isBefore(date)) {
+                                    $(el).addClass('in-range');
+                                } else {
+                                    $(el).removeClass('in-range');
+                                }
+                            }
+                        } else {
+                            if (dt.isAfter(startDate) && dt.isBefore(date)) {
+                                $(el).addClass('in-range');
+                            } else {
+                                $(el).removeClass('in-range');
+                            }
+                        }
+                    }
+
+                    //====================== Ends Here =========================
+
+                    //====================== Starts Here =========================
+                    if (setDatesDisabled.length != 0) {
+                        var rangeDate = moment.range(fromDate, toDate);
+                        var startDisabledDate = "";
+                        var currentDate = moment(fromDate),
+                            endDate = moment(toDate);
+
+                        while (currentDate <= endDate) {
+                            if ($.inArray(moment(currentDate).format('MM/DD/YYYY'), setDatesDisabled) > -1) {
+                                startDisabledDate = currentDate;
+                                break;
+                            }
+                            currentDate = moment(currentDate).add(1, 'days');
+                        }
+
+                        if (startDisabledDate != "") {
+                            if (rangeDate.contains(startDisabledDate)) {
+                                if (dt.isSame(startDisabledDate) || dt.isAfter(startDisabledDate)) {
+                                    if ($(el).hasClass('available')) {
+                                        $(el).addClass('out-range');
+                                        $(el).removeClass('in-range');
+                                    } else {
+                                        $(el).removeClass('out-range');
+                                    }
+                                } else if (dt.isBefore(startDisabledDate)) {
+                                    $(el).removeClass('out-range');
+                                }
+                            } else {
+                                $(el).removeClass('out-range');
+                                if (dt.isAfter(startDate) && dt.isBefore(date)) {
+                                    $(el).addClass('in-range');
+                                } else {
+                                    $(el).removeClass('in-range');
+                                }
+                            }
+                        } else {
+                            if (dt.isAfter(startDate) && dt.isBefore(date)) {
+                                $(el).addClass('in-range');
+                            } else {
+                                $(el).removeClass('in-range');
+                            }
+                        }
+                    }
+                    //====================== Ends Here ===========================
+
+                    //Original code below
+                    //===============================================
+                    //                                        if (dt.isAfter(startDate) && dt.isBefore(date)) {
+                    //                                            $(el).addClass('in-range');
+                    //                                        } else {
+                    //                                            $(el).removeClass('in-range');
+                    //                                        }
+                    //=================================================
 
                 });
             }
 
         },
 
-        clickDate: function(e) {
+        clickDate: function (e) {
 
             if (!$(e.target).hasClass('available')) return;
 
@@ -1289,6 +1618,65 @@
                     this.clickApply();
             }
 
+            //====================== Starts Here =========================
+            if (this.setDisableDates == true) {
+                var startDisabledDate = "";
+                var currentDate = moment(this.startDate),
+                            endDate = moment(this.endDate);
+                while (currentDate <= endDate) {
+                    if ($.inArray(moment(currentDate).format('MM/DD/YYYY'), this.setDates) == -1) {
+                        startDisabledDate = currentDate;
+                        break;
+                    }
+                    currentDate = moment(currentDate).add(1, 'days');
+                }
+
+                if (startDisabledDate != "") {
+                    this.setEndDate(moment(startDisabledDate).subtract(1, 'days'));
+                }
+            }
+
+            //====================== Ends Here =========================
+
+            //====================== Starts Here =========================
+            if (this.setDisableWeekdays == true) {
+                var startDisabledDate = "";
+                var currentDate = moment(this.startDate),
+                            endDate = moment(this.endDate);
+                while (currentDate <= endDate) {
+                    if ($.inArray(moment(currentDate).day(), this.setWeekdays) == -1) {
+                        startDisabledDate = currentDate;
+                        break;
+                    }
+                    currentDate = moment(currentDate).add(1, 'days');
+                }
+
+                if (startDisabledDate != "") {
+                    this.setEndDate(moment(startDisabledDate).subtract(1, 'days'));
+                }
+            }
+
+            //====================== Ends Here =========================
+
+
+            //====================== Starts Here =========================
+            if (this.setDatesDisabled.length != 0) {
+                var startDisabledDate = "";
+                var currentDate = moment(this.startDate),
+                            endDate = moment(this.endDate);
+
+                while (currentDate <= endDate) {
+                    if ($.inArray(moment(currentDate).format('MM/DD/YYYY'), this.setDatesDisabled) > -1) {
+                        startDisabledDate = currentDate;
+                        break;
+                    }
+                    currentDate = moment(currentDate).add(1, 'days');
+                }
+                if (startDisabledDate != "") {
+                    this.setEndDate(moment(startDisabledDate).subtract(1, 'days'));
+                }
+            }
+            //====================== Ends Here ===========================
             if (this.singleDatePicker) {
                 this.setEndDate(this.startDate);
                 if (!this.timePicker)
@@ -1299,22 +1687,22 @@
 
         },
 
-        clickApply: function(e) {
+        clickApply: function (e) {
             this.hide();
             this.element.trigger('apply.daterangepicker', this);
         },
 
-        clickCancel: function(e) {
+        clickCancel: function (e) {
             this.startDate = this.oldStartDate;
             this.endDate = this.oldEndDate;
             this.hide();
             this.element.trigger('cancel.daterangepicker', this);
         },
 
-        monthOrYearChanged: function(e) {
+        monthOrYearChanged: function (e) {
             var isLeft = $(e.target).closest('.calendar').hasClass('left'),
                 leftOrRight = isLeft ? 'left' : 'right',
-                cal = this.container.find('.calendar.'+leftOrRight);
+                cal = this.container.find('.calendar.' + leftOrRight);
 
             // Month must be Number for new moment versions
             var month = parseInt(cal.find('.monthselect').val(), 10);
@@ -1353,7 +1741,7 @@
             this.updateCalendars();
         },
 
-        timeChanged: function(e) {
+        timeChanged: function (e) {
 
             var cal = $(e.target).closest('.calendar'),
                 isLeft = cal.hasClass('left');
@@ -1376,11 +1764,8 @@
                 start.minute(minute);
                 start.second(second);
                 this.setStartDate(start);
-                if (this.singleDatePicker) {
+                if (this.singleDatePicker)
                     this.endDate = this.startDate.clone();
-                } else if (this.endDate && this.endDate.format('YYYY-MM-DD') == start.format('YYYY-MM-DD') && this.endDate.isBefore(start)) {
-                    this.setEndDate(start.clone());
-                }
             } else if (this.endDate) {
                 var end = this.endDate.clone();
                 end.hour(hour);
@@ -1401,7 +1786,7 @@
 
         },
 
-        formInputsChanged: function(e) {
+        formInputsChanged: function (e) {
             var isRight = $(e.target).closest('.calendar').hasClass('right');
             var start = moment(this.container.find('input[name="daterangepicker_start"]').val(), this.locale.format);
             var end = moment(this.container.find('input[name="daterangepicker_end"]').val(), this.locale.format);
@@ -1429,10 +1814,9 @@
             }
         },
 
-        elementChanged: function() {
+        elementChanged: function () {
             if (!this.element.is('input')) return;
             if (!this.element.val().length) return;
-            if (this.element.val().length < this.locale.format.length) return;
 
             var dateString = this.element.val().split(this.locale.separator),
                 start = null,
@@ -1447,22 +1831,110 @@
                 start = moment(this.element.val(), this.locale.format);
                 end = start;
             }
+            //====================== Starts Here =========================
+            if (this.setDisableDates == true) {
+                var startDisabledDate = "";
+                var currentDate = moment(this.startDate),
+                            endDate = moment(this.endDate);
+                while (currentDate <= endDate) {
+                    if ($.inArray(moment(currentDate).format('MM/DD/YYYY'), this.setDates) > -1) {
+                        this.startDate = moment(currentDate).format('MM/DD/YYYY');
+                        break;
+                    }
+                    currentDate = moment(currentDate).add(1, 'days');
+                }
 
-            if (!start.isValid() || !end.isValid()) return;
+
+                var currentDate = moment(this.startDate),
+                            endDate = moment(this.endDate);
+
+                while (currentDate <= endDate) {
+                    if ($.inArray(moment(currentDate).format('MM/DD/YYYY'), this.setDates) == -1) {
+                        startDisabledDate = currentDate;
+                        break;
+                    }
+                    currentDate = moment(currentDate).add(1, 'days');
+                }
+
+                if (startDisabledDate != "") {
+                    end = moment(startDisabledDate).subtract(1, 'days');
+                }
+            }
+            //====================== Ends Here =========================
+
+            //====================== Starts Here =========================
+            if (this.setDisableWeekdays == true) {
+                var startDisabledDate = "";
+                var currentDate = moment(this.startDate),
+                            endDate = moment(this.endDate);
+                while (currentDate <= endDate) {
+                    if ($.inArray(moment(currentDate).day(), this.setWeekdays) > -1) {
+                        this.startDate = moment(currentDate).format('MM/DD/YYYY');
+                        break;
+                    }
+                    currentDate = moment(currentDate).add(1, 'days');
+                }
+
+
+                var currentDate = moment(this.startDate),
+                            endDate = moment(this.endDate);
+
+                while (currentDate <= endDate) {
+                    if ($.inArray(moment(currentDate).day(), this.setWeekdays) == -1) {
+                        startDisabledDate = currentDate;
+                        break;
+                    }
+                    currentDate = moment(currentDate).add(1, 'days');
+                }
+
+                if (startDisabledDate != "") {
+                    end = moment(startDisabledDate).subtract(1, 'days');
+                }
+            }
+            //====================== Ends Here =========================
+
+            //====================== Starts Here =========================
+            if (this.setDatesDisabled.length != 0) {
+                var startDisabledDate = "";
+                var currentDate = moment(this.startDate),
+                            endDate = moment(this.endDate);
+                while (currentDate <= endDate) {
+                    if ($.inArray(moment(currentDate).day(), this.setDatesDisabled) == -1) {
+                        this.startDate = moment(currentDate).format('MM/DD/YYYY');
+                        break;
+                    }
+                    currentDate = moment(currentDate).add(1, 'days');
+                }
+
+                var currentDate = moment(this.startDate),
+                            endDate = moment(this.endDate);
+
+                while (currentDate <= endDate) {
+                    if ($.inArray(moment(currentDate).format('MM/DD/YYYY'), this.setDatesDisabled) > -1) {
+                        startDisabledDate = currentDate;
+                        break;
+                    }
+                    currentDate = moment(currentDate).add(1, 'days');
+                }
+                if (startDisabledDate != "") {
+                    end = moment(startDisabledDate).subtract(1, 'days');
+                }
+            }
+            //====================== Ends Here ===========================
 
             this.setStartDate(start);
             this.setEndDate(end);
             this.updateView();
         },
 
-        keydown: function(e) {
+        keydown: function (e) {
             //hide on tab or enter
             if ((e.keyCode === 9) || (e.keyCode === 13)) {
                 this.hide();
             }
         },
 
-        updateElement: function() {
+        updateElement: function () {
             if (this.element.is('input') && !this.singleDatePicker && this.autoUpdateInput) {
                 this.element.val(this.startDate.format(this.locale.format) + this.locale.separator + this.endDate.format(this.locale.format));
                 this.element.trigger('change');
@@ -1472,7 +1944,7 @@
             }
         },
 
-        remove: function() {
+        remove: function () {
             this.container.remove();
             this.element.off('.daterangepicker');
             this.element.removeData();
@@ -1480,8 +1952,8 @@
 
     };
 
-    $.fn.daterangepicker = function(options, callback) {
-        this.each(function() {
+    $.fn.daterangepicker = function (options, callback) {
+        this.each(function () {
             var el = $(this);
             if (el.data('daterangepicker'))
                 el.data('daterangepicker').remove();
