@@ -164,6 +164,39 @@
   cursor: pointer;
 }
 
+.daterangepicker td.out-range {
+  background: #ff7575;
+  border-radius: 0;
+  cursor: not-allowed;
+}
+
+.daterangepicker td.out-range {
+  background: #ff7575;
+  border-radius: 0;
+  cursor: not-allowed;
+}
+
+.daterangepicker td.weeknum.available:hover, .daterangepicker th.weeknum.available:hover
+{
+    background-color: #009999;
+    border-color: #3071a9;
+    border-radius: 4px 4px 4px 4px;
+    color: #fff;
+}
+
+.daterangepicker td.weeknum.active, .daterangepicker td.weeknum.active:hover {
+  background-color: #357ebd;
+  border-color: #3071a9;
+  border-radius: 4px 4px 4px 4px;
+  color: #fff;
+}
+.daterangepicker td.weeknum, .daterangepicker th.weeknum 
+{
+  background: #eee;
+  font-size: 80%;
+  color: #000;
+}
+
 .daterangepicker td.off, .daterangepicker td.off.in-range, .daterangepicker td.off.start-date, .daterangepicker td.off.end-date {
   color: #999;
   background: #fff;
