@@ -10,6 +10,12 @@ Features include limiting the selectable date range, localizable strings and dat
 a single date picker mode, optional time picker (for e.g. making appointments or reservations),
 and styles that match the default Bootstrap 3 theme.
 
+added features:
+
+disable given dates or day.
+selectable week number.
+limiting selectable date range based on the given disabled dates
+
 ## [Documentation and Live Usage Examples](http://www.daterangepicker.com)
 
 ## [See It In a Live Application](https://awio.iljmp.com/5/drpdemogh)
